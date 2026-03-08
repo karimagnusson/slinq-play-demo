@@ -1,6 +1,6 @@
 # slinq-play-demo
 
-A comprehensive demonstration REST API showcasing [Slinq](https://github.com/karimagnusson/slinq), a type-safe SQL query builder for PostgreSQL, integrated with [Play Framework](https://www.playframework.com/) for building web services. This demo uses [slinq-play](https://github.com/karimagnusson/slinq-play) as a Play module with [slinq-pg-pekko](https://github.com/karimagnusson/slinq) for Pekko Streams support (Source/Sink).
+A comprehensive demonstration REST API showcasing [Slinq](https://github.com/karimagnusson/slinq), a type-safe SQL query builder for PostgreSQL, integrated with [Play Framework](https://www.playframework.com/) for building web services. This demo uses [slinq-play](https://github.com/karimagnusson/slinq-play) as a Play module.
 
 ## Tech Stack
 
