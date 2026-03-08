@@ -1,20 +1,47 @@
 # slinq-play-demo
 
-Slinq is a PostgreSQL query builder for Scala that mirrors SQL structure directly in code. See full documentation at [https://slinq.kotturinn.com/](https://slinq.kotturinn.com/).
+A comprehensive demonstration REST API showcasing [Slinq](https://github.com/karimagnusson/slinq), a type-safe SQL query builder for PostgreSQL, integrated with [Play Framework](https://www.playframework.com/) for building web services. This demo uses [slinq-play](https://github.com/karimagnusson/slinq-play) as a Play module with [slinq-pg-pekko](https://github.com/karimagnusson/slinq) for Pekko Streams support (Source/Sink).
 
-slinq-play-demo is an example REST API using [slinq-pg-pekko](https://github.com/karimagnusson/slinq) and [Play Framework](https://www.playframework.com/). Most of the example queries in this demo return rows as Play JSON. There are also examples where rows are returned from the database as a JSON string. Slinq has the ability to build complex JSON objects on the database using subqueries and return the result as a JSON string that can be returned directly to the client.
+## Tech Stack
 
-This version uses Play 3.0.6 with [Pekko](https://pekko.apache.org/). To use [Slinq](https://github.com/karimagnusson/slinq) with [Play](https://www.playframework.com/) as a module it uses [slinq-play](https://github.com/karimagnusson/slinq-play). It depends on [slinq-pg-pekko](https://github.com/karimagnusson/slinq) which provides Pekko Streams support (Source/Sink).
+- **Scala** 3.3.7
+- **Play Framework** 3.0.6
+- **Pekko** 1.0.3
+- **Slinq** 0.9.6-RC2
+- **PostgreSQL** (World database sample)
 
-Examples:
-- Select, insert, update, delete
-- Cached queries
-- Subqueries
-- Jsonb field
-- Array field
-- Date/Time methods
-- Streaming
-- Type-safe queries
+## Features
+
+This demo provides practical examples of:
+
+### Core Operations
+
+- **CRUD Operations** - Type-safe SELECT, INSERT, UPDATE, DELETE queries
+- **Type-Safe Queries** - Compile-time verified SQL with case class mapping using Play JSON
+- **Query Caching** - Pre-compiled queries with dynamic WHERE conditions for improved performance
+
+### Advanced Features
+
+- **Streaming** - Efficient CSV export/import with Pekko Streams
+- **JSONB Support** - PostgreSQL JSONB field operations (query, update, nested access)
+- **Array Operations** - PostgreSQL array field manipulation
+- **Date/Time Functions** - PostgreSQL timestamp methods and operations
+- **JOIN Queries** - Multi-table queries with subqueries and aggregates
+- **Conditional WHERE** - Optional query parameters with type-safe builders
+
+### Code Examples
+
+Each route file demonstrates specific functionality:
+
+- `SelectPlayJsonRoute.scala` - SELECT queries returning Play JSON via `.colsNamed`
+- `SelectDbJsonRoute.scala` - SELECT queries returning JSON strings built on the database
+- `OperationRoute.scala` - INSERT, UPDATE, DELETE with RETURNING
+- `SelectTypeRoute.scala` - Type-safe queries with case class serialization
+- `CacheRoute.scala` - Cached queries with pickWhere
+- `StreamRoute.scala` - Streaming CSV export/import
+- `JsonbRoute.scala` - JSONB field operations
+- `ArrayRoute.scala` - PostgreSQL array operations
+- `DateRoute.scala` - Timestamp and date functions
 
 ## Getting Started
 
@@ -71,4 +98,25 @@ sbt run
 
 ### Testing with Postman
 
-If you use [Postman](https://www.postman.com/) you can import `postman/play-demo.json` where all the endpoints are set up.
+If you use [Postman](https://www.postman.com/), import the collection from `postman/play-demo.json` to get all endpoints pre-configured with example requests.
+
+## API Examples
+
+The demo includes various endpoints demonstrating Slinq features:
+
+- `GET /select/country/:code` - Simple SELECT query
+- `GET /select/cities/:code` - JOIN with custom field names
+- `POST /type/insert/trip` - Type-safe INSERT with case class
+- `GET /stream/export/:coin` - Stream database results as CSV
+- `POST /stream/import` - Stream CSV file to database
+- `GET /jsonb/country/:code` - Query JSONB fields
+- `PATCH /array/add/lang` - Add element to PostgreSQL array
+
+See the route files in `play/app/controllers/` for complete implementation details.
+
+## Learn More
+
+- [Slinq Documentation](https://slinq.kotturinn.com/)
+- [Slinq GitHub](https://github.com/karimagnusson/slinq)
+- [Play Framework Documentation](https://www.playframework.com/documentation)
+- [Pekko Documentation](https://pekko.apache.org/docs/)
