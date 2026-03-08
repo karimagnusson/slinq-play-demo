@@ -12,20 +12,19 @@ import scala.util.{Try, Success, Failure}
 import org.apache.pekko.util.ByteString
 import org.apache.pekko.stream.scaladsl._
 import org.apache.pekko.actor.ActorSystem
-import kuzminki.api._
-import kuzminki.fn._
-import kuzminki.pekko.stream._
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.fn.*
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// Examples for streaming.
+// Streaming data export and import.
 
 @Singleton
 class StreamRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
            as: ActorSystem,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJsonDemo {
 
   val coinPrice = Model.get[CoinPrice]
@@ -49,38 +48,35 @@ class StreamRoute @Inject()(
 
   val insertCoinPriceStm = sql
     .insert(coinPrice)
-    .cols3(t => (
+    .cols(t => (
       t.coin,
       t.price,
       t.created
     ))
     .cache
 
-  // Stream data from the database to the client.
-
+  // Stream database query results as CSV file
   def streamExport(code: String) = Action {
-    val source = sql
+    val src = sql
       .select(coinPrice)
-      .cols3(t => (
+      .cols(t => (
         t.coin,
         Fn.roundStr(t.price, 2),
         t.created
       ))
       .where(_.coin === code.toUpperCase)
       .orderBy(_.created.asc)
-      .stream
+      .source()
       .map(makeLine)
       .map(ByteString(_))
 
     Result(
       header = ResponseHeader(200, Map.empty),
-      body = HttpEntity.Streamed(source, None, Some("text/csv"))
+      body = HttpEntity.Streamed(src, None, Some("text/csv"))
     )
   }
 
-  // Stream file contents to the database.
-  // file: /csv/eth-price.csv
-
+  // Stream CSV file upload directly to database with batching (sample file in csv folder)
   def streamImport = Action.async(parse.temporaryFile) { request =>
     FileIO
       .fromPath(request.body.path)
@@ -88,14 +84,11 @@ class StreamRoute @Inject()(
       .map(_.utf8String)
       .map(parseLine)
       .grouped(100) // insert 100 in each transaction.
-      .runWith(insertCoinPriceStm.asChunkSink)
+      .runWith(insertCoinPriceStm.asListSink)
       .map(jsonSuccess)
   }
 
-  // Stream csv file into a temporary table.
-  // If there are no errors, move the data from the temp table to the target table.
-  // Then delete the data from the temp table. 
-
+  // Safe import using temporary table with rollback on failure (sample file in csv folder)
   def streamSafeImport = Action.async(parse.temporaryFile) { request =>
     
     val uid = UUID.randomUUID
@@ -113,7 +106,7 @@ class StreamRoute @Inject()(
         }
         .runWith(sql
           .insert(tempCoinPrice)
-          .cols4(t => (
+          .cols(t => (
             t.uid,
             t.coin,
             t.price,
@@ -125,7 +118,7 @@ class StreamRoute @Inject()(
 
       _ <- sql  // Add UUID used by the temp table.
         .insert(coinPrice)
-        .cols3(t => (
+        .cols(t => (
           t.coin,
           t.price,
           t.created
@@ -133,7 +126,7 @@ class StreamRoute @Inject()(
         .fromSelect(
           sql
             .select(tempCoinPrice)
-            .cols3(t => (
+            .cols(t => (
               t.coin,
               t.price,
               t.created

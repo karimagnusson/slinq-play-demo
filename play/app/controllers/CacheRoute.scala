@@ -5,18 +5,18 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.api._
-import kuzminki.pekko.play.json.PlayJson
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.play.json.PlayJson
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// Cached queries
+// Cached queries with pickWhere for runtime arguments.
 
 @Singleton
 class CacheRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJson // implicit conversion to Json
                             with PlayJsonDemo {
 
@@ -25,8 +25,7 @@ class CacheRoute @Inject()(
   val language = Model.get[Language]
   val trip = Model.get[Trip]
 
-  // cached queries
-
+  // Cached SELECT with pickWhere for runtime arguments
   val selectCountryStm = sql
     .select(country)
     .colsNamed(t => Seq(
@@ -36,9 +35,10 @@ class CacheRoute @Inject()(
       t.region
     ))
     .all
-    .pickWhere1(_.code.use === Arg)
+    .pickWhere(_.code.use === Arg)
     .cache
 
+  // Cached JOIN with multiple pickWhere arguments
   val selectJoinStm = sql
     .select(city, country)
     .colsNamed(t => Seq(
@@ -57,15 +57,16 @@ class CacheRoute @Inject()(
     ))
     .orderBy(_.a.population.desc)
     .limit(5)
-    .pickWhere2(t => (
+    .pickWhere(t => (
       t.b.population.use >= Arg,
       t.b.gnp.use >= Arg
     ))
     .cache
 
+  // Cached INSERT
   val insertTripStm = sql
     .insert(trip)
-    .cols2(t => (
+    .cols(t => (
       t.cityId,
       t.price
     ))
@@ -76,10 +77,11 @@ class CacheRoute @Inject()(
     ))
     .cache
 
+  // Cached UPDATE with pickSet and pickWhere
   val updateTripStm = sql
     .update(trip)
-    .pickSet1(_.price.use ==> Arg)
-    .pickWhere1(_.id.use === Arg)
+    .pickSet(_.price.use ==> Arg)
+    .pickWhere(_.id.use === Arg)
     .returningNamed(t => Seq(
       t.id,
       t.cityId,
@@ -87,9 +89,10 @@ class CacheRoute @Inject()(
     ))
     .cache
 
+  // Cached DELETE
   val deleteTripStm = sql
     .delete(trip)
-    .pickWhere1(_.id.use === Arg)
+    .pickWhere(_.id.use === Arg)
     .returningJson(t => Seq(
       t.id,
       t.cityId,
@@ -97,18 +100,21 @@ class CacheRoute @Inject()(
     ))
     .cache
 
+  // Run cached SELECT with single argument
   def selectCountry(code: String) = Action.async {
     selectCountryStm
       .runHeadOptAs[JsValue](code.toUpperCase)
       .map(jsonOpt(_))
   }
 
+  // Run cached JOIN with multiple arguments
   def selectJoin(pop: Int, gnp: Int) = Action.async {
     selectJoinStm
         .runAs[JsValue](pop, BigDecimal(gnp))
         .map(jsonList(_))
   }
 
+  // Run cached INSERT
   def insertTrip = Action.async(parse.json) { request =>
     val cityId = (request.body \ "city_id").as[Int]
     val price = (request.body \ "price").as[Int]
@@ -117,6 +123,7 @@ class CacheRoute @Inject()(
       .map(jsonObj(_))
   }
 
+  // Run cached UPDATE
   def updateTrip = Action.async(parse.json) { request =>
     val id = (request.body \ "id").as[Int]
     val price = (request.body \ "price").as[Int]
@@ -125,6 +132,7 @@ class CacheRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Run cached DELETE
   def deleteTrip = Action.async(parse.json) { request =>
     val id = (request.body \ "id").as[Int]
     deleteTripStm

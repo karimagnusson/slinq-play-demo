@@ -5,24 +5,26 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.api._
-import kuzminki.fn._
-import kuzminki.pekko.play.json.PlayJson
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.fn.*
+import slinq.pg.play.json.PlayJson
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// Examples for jsonb field.
+// JSONB operations.
+// JSON operators follow PostgreSQL syntax: -> for object, ->> for text, #>> for deep path.
 
 @Singleton
 class JsonbRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJson
                             with PlayJsonDemo {
 
   val countryData = Model.get[CountryData]
 
+  // Select JSONB field
   def jsonbCountry(code: String) = Action.async {
     sql
       .select(countryData)
@@ -37,6 +39,7 @@ class JsonbRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Query nested JSONB field and concatenate JSONB objects
   def jsonbCapital(name: String) = Action.async {
     sql
       .select(countryData)
@@ -51,6 +54,7 @@ class JsonbRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Access JSONB array element and extract nested values
   def jsonbCityPopulation = Action.async {
     sql
       .select(countryData)
@@ -68,6 +72,7 @@ class JsonbRoute @Inject()(
 
   }
 
+  // Deep path extraction and aggregate
   def jsonbCapitalAvg(cont: String) = Action.async {
     sql
       .select(countryData)
@@ -82,6 +87,7 @@ class JsonbRoute @Inject()(
       .map(jsonObj)
   }
 
+  // Add field to JSONB object
   def addPhone = Action.async(parse.json) { request =>
 
     val code = (request.body \ "code").as[String]
@@ -99,6 +105,7 @@ class JsonbRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Remove field from JSONB object
   def delPhone = Action.async(parse.json) { request =>
 
     val code = (request.body \ "code").as[String]

@@ -2,7 +2,7 @@ package models
 
 import java.util.UUID
 import java.sql.Timestamp
-import kuzminki.api._
+import slinq.pg.pekko.api.{*, given}
 
 
 object world {

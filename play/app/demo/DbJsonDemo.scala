@@ -4,7 +4,7 @@ import play.api._
 import play.api.mvc._
 import play.api.http.HttpEntity
 import org.apache.pekko.util.ByteString
-import kuzminki.api.Jsonb
+import slinq.pg.api.Jsonb
 
 // Responses for json delivered as a string from the database.
 

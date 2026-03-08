@@ -5,22 +5,21 @@ import play.api._
 import play.api.mvc._
 import play.api.libs.json._
 import scala.concurrent.ExecutionContext
-import kuzminki.pekko.play.json.PlayJson
-import kuzminki.api._
-import kuzminki.fn._
+import slinq.pg.play.json.PlayJson
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.fn.*
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// These are the same queries as in SelectDbJsonRoute
-// but here the databse returns the each row as Tuple2[String, Any]
-// that is transformed into JsValue with utils.PlayJsonLoader.
-// Note the trait PlayJson.
+// SELECT queries with JOIN, subqueries, and aggregates.
+// .colsNamed returns each row as Seq[Tuple2[String, Any]] (name, value pairs)
+// that is transformed into JsValue with the PlayJson trait.
 
 @Singleton
 class SelectPlayJsonRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJson
                             with PlayJsonDemo {
 
@@ -28,6 +27,7 @@ class SelectPlayJsonRoute @Inject()(
   val country = Model.get[Country]
   val language = Model.get[Language]
 
+  // Simple SELECT
   def selectCountry(code: String) = Action.async {
     sql
       .select(country)
@@ -38,10 +38,11 @@ class SelectPlayJsonRoute @Inject()(
         t.region
       ))
       .where(_.code === code.toUpperCase)
-      .runHeadOptAs[JsValue] // read into JsValue with utils.PlayJsonLoader
+      .runHeadOptAs[JsValue]
       .map(jsonOpt(_))
   }
 
+  // JOIN with custom field names
   def selectCities(code: String) = Action.async {
     sql
       .select(city, country)
@@ -61,6 +62,7 @@ class SelectPlayJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Subquery as nested object
   def selectLanguage(code: String) = Action.async {
     sql
       .select(country)
@@ -87,6 +89,7 @@ class SelectPlayJsonRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Nested object with Fn.json and subquery as array
   def selectCountryCities(code: String) = Action.async {
     sql
       .select(country)
@@ -115,6 +118,7 @@ class SelectPlayJsonRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Optional WHERE conditions
   def selectOptional = Action.async { request =>
     val params = request.queryString.map(p => p._1 -> p._2(0))
     sql
@@ -138,6 +142,7 @@ class SelectPlayJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Complex WHERE with AND/OR logic
   def selectAndOr(cont: String) = Action.async {
     sql
       .select(country)
@@ -170,6 +175,7 @@ class SelectPlayJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Aggregate functions
   def selectPopulation(cont: String) = Action.async {
     sql
       .select(country)

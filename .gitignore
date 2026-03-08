@@ -9,3 +9,5 @@ src_managed/
 project/plugins/project/
 .idea
 .bsp
+.metals
+.vscode

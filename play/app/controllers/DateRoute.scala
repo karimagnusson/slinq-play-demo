@@ -5,25 +5,25 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.pekko.play.json.PlayJson
-import kuzminki.api._
-import kuzminki.fn._
-import kuzminki.pekko.play.json.PlayJson
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.fn.*
+import slinq.pg.play.json.PlayJson
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// Examples of working with timestamp field.
+// Timestamp operations and date part extraction.
 
 @Singleton
 class DateRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJson
                             with PlayJsonDemo {
 
   val btcPrice = Model.get[BtcPrice]
 
+  // Extract date parts (year, day of year) and format timestamp
   def btcHour = Action.async { request =>
     val params = request.queryString.map(p => p._1 -> p._2(0))
     sql
@@ -44,6 +44,7 @@ class DateRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Aggregate data by quarter
   def btcQuarterAvg = Action.async { request =>
     val params = request.queryString.map(p => p._1 -> p._2(0))
     sql
@@ -61,6 +62,7 @@ class DateRoute @Inject()(
       .map(jsonObj(_))
   }
 
+  // Extract multiple date parts (year, quarter, week)
   def btcBreak = Action.async { request =>
     val params = request.queryString.map(p => p._1 -> p._2(0))
     sql

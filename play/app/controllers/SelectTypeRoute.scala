@@ -5,86 +5,85 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.api._
-import models.world._
+import slinq.pg.pekko.api.{*, given}
+import models.world.*
 
-// Examples of returning rows as types and using types for insert.
+// Type-safe queries with case classes using Play JSON for serialization.
 
 @Singleton
-class TypeRoute @Inject()(
+class SelectTypeRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController {
+           db: SlinqPg) extends BaseController {
 
   val country = Model.get[Country]
   val trip = Model.get[Trip]
 
   // Writes
   case class CountryType(code: String, name: String, population: Int)
-  implicit val countryWrites: Writes[CountryType] = Json.writes[CountryType]
+  given Writes[CountryType] = Json.writes[CountryType]
 
   case class TripType(id: Long, cityId: Int, price: Int)
-  implicit val tripWrites: Writes[TripType] = Json.writes[TripType]
+  given Writes[TripType] = Json.writes[TripType]
 
   // Reads
 
   case class TripDataType(cityId: Int, price: Int)
-  implicit val tripDataReads: Reads[TripDataType] = Json.reads[TripDataType]
+  given Reads[TripDataType] = Json.reads[TripDataType]
 
   case class TripPriceType(id: Long, price: Int)
-  implicit val tripPriceReads: Reads[TripPriceType] = Json.reads[TripPriceType]
+  given Reads[TripPriceType] = Json.reads[TripPriceType]
 
-  // Select row as type.
-
+  // SELECT with type-safe result mapping
   def selectCountry(code: String) = Action.async {
     sql
       .select(country)
-      .cols3(t => (
+      .cols(t => (
         t.code,
         t.name,
         t.population
       ))
       .where(_.code === code.toUpperCase)
-      .runHeadOptType[CountryType]
+      .runHeadOptAs[CountryType]
       .map {
         case Some(res) => Ok(Json.toJson(res))
         case None => Ok(Json.obj("message" -> "not found"))
       }
   }
 
-  // Insert type
-
+  // INSERT with type-safe input and output
   def insertTrip = Action.async(parse.json) { req =>
+    val data = req.body.as[TripDataType]
     sql
       .insert(trip)
-      .cols2(t => (
+      .cols(t => (
         t.cityId,
         t.price
       ))
-      .valuesType(req.body.as[TripDataType])
-      .returning3(t => (
+      .values((data.cityId, data.price))
+      .returning(t => (
         t.id,
         t.cityId,
         t.price
       ))
-      .runHeadType[TripType]
+      .runHeadAs[TripType]
       .map(res => Ok(Json.toJson(res)))
   }
 
+  // UPDATE with type-safe input and output
   def updateTrip = Action.async(parse.json) { req =>
-
     val data = req.body.as[TripPriceType]
 
     sql
       .update(trip)
       .set(_.price ==> data.price)
       .where(_.id === data.id)
-      .returning3(t => (
+      .returning(t => (
         t.id,
         t.cityId,
         t.price
       ))
-      .runHeadOptType[TripType]
+      .runHeadOptAs[TripType]
       .map {
         case Some(res) => Ok(Json.toJson(res))
         case None => Ok(Json.obj("message" -> "not found"))

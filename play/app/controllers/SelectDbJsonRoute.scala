@@ -5,20 +5,20 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.api._
-import kuzminki.fn._
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.fn.*
 import demo.responses.DbJsonDemo
-import models.world._
+import models.world.*
 
-// These are the same queries as in SelectPlayJsonCtl
-// but here the databse returns the each row as JSON string
-// that is passed directly to the client. Note the trait DbJson.
+// SELECT queries with JOIN, subqueries, and aggregates.
+// Here the database returns each row as a JSON string
+// that is passed directly to the client.
 
 @Singleton
 class SelectDbJsonRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with DbJsonDemo {
 
   val city = Model.get[City]
@@ -26,6 +26,7 @@ class SelectDbJsonRoute @Inject()(
   val language = Model.get[Language]
 
 
+  // Simple SELECT
   def selectCountry(code: String) = Action.async {
     sql
       .select(country)
@@ -40,6 +41,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // JOIN with custom field names
   def selectCities(code: String) = Action.async {
     sql
       .select(city, country)
@@ -59,6 +61,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Subquery as nested object
   def selectLanguage(code: String) = Action.async {
     sql
       .select(country)
@@ -85,6 +88,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Nested object with Fn.json and subquery as array
   def selectCountryCities(code: String) = Action.async {
     sql
       .select(country)
@@ -113,6 +117,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // Optional WHERE conditions
   def selectOptional = Action.async { request =>
     val params = request.queryString.map(p => p._1 -> p._2(0))
     sql
@@ -136,6 +141,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Complex WHERE with AND/OR logic
   def selectAndOr(cont: String) = Action.async {
     sql
       .select(country)
@@ -171,6 +177,7 @@ class SelectDbJsonRoute @Inject()(
       .map(jsonList(_))
   }
 
+  // Aggregate functions
   def selectPopulation(cont: String) = Action.async {
     sql
       .select(country)

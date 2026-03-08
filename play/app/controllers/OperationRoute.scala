@@ -5,23 +5,24 @@ import scala.concurrent.ExecutionContext
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
-import kuzminki.api._
-import kuzminki.pekko.play.json.PlayJson
+import slinq.pg.pekko.api.{*, given}
+import slinq.pg.play.json.PlayJson
 import demo.responses.PlayJsonDemo
-import models.world._
+import models.world.*
 
-// INSERT, UPDATE, DELETE
+// INSERT, UPDATE, DELETE with RETURNING.
 
 @Singleton
 class OperationsRoute @Inject()(
   val controllerComponents: ControllerComponents
 )(implicit ec: ExecutionContext,
-           db: Kuzminki) extends BaseController
+           db: SlinqPg) extends BaseController
                             with PlayJson
                             with PlayJsonDemo {
 
   val trip = Model.get[Trip]
 
+  // INSERT with RETURNING
   def insertTrip = Action.async(parse.json) { request =>
 
     val cityId = (request.body \ "city_id").as[Int]
@@ -29,7 +30,7 @@ class OperationsRoute @Inject()(
 
     sql
       .insert(trip)
-      .cols2(t => (
+      .cols(t => (
         t.cityId,
         t.price
       ))
@@ -46,6 +47,7 @@ class OperationsRoute @Inject()(
       .map(jsonObj(_))
   }
 
+  // UPDATE with RETURNING
   def updateTrip = Action.async(parse.json) { request =>
 
     val id = (request.body \ "id").as[Int]
@@ -64,6 +66,7 @@ class OperationsRoute @Inject()(
       .map(jsonOpt(_))
   }
 
+  // DELETE with RETURNING
   def deleteTrip = Action.async(parse.json) { request =>
 
     val id = (request.body \ "id").as[Int]
